@@ -3,10 +3,10 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{68E6EB3B-4076-48F6-9EB6-1181057C0977}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <RootNamespace>Mono.BlueZ.DBus</RootNamespace>
-    <AssemblyName>Mono.BlueZ.DBus</AssemblyName>
+    <ProjectGuid>{443FB2F2-4F16-4C60-9B37-614B609F119E}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Mono.BlueZ.Console</RootNamespace>
+    <AssemblyName>Mono.BlueZ.Console</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -17,7 +17,7 @@
     <DefineConstants>DEBUG;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <ConsolePause>false</ConsolePause>
+    <Externalconsole>true</Externalconsole>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>full</DebugType>
@@ -25,38 +25,27 @@
     <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <ConsolePause>false</ConsolePause>
+    <Externalconsole>true</Externalconsole>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SimpleObjectManager.cs" />
-    <Compile Include="AgentManager1.cs" />
-    <Compile Include="Alert1.cs" />
-    <Compile Include="HealthManager1.cs" />
-    <Compile Include="ProfileManager1.cs" />
-    <Compile Include="Adapter1.cs" />
-    <Compile Include="CyclingSpeedManager1.cs" />
-    <Compile Include="HeartRateManager1.cs" />
-    <Compile Include="Media1.cs" />
-    <Compile Include="NetworkServer1.cs" />
-    <Compile Include="ThermometerManager1.cs" />
-    <Compile Include="Device1.cs" />
-    <Compile Include="MediaControl1.cs" />
-    <Compile Include="Profile1.cs" />
-    <Compile Include="GattService1.cs" />
-    <Compile Include="GattCharacteristic1.cs" />
-    <Compile Include="GattDescriptor1.cs" />
-    <Compile Include="GattProfile1.cs" />
-    <Compile Include="GattManager1.cs" />
-    <Compile Include="LEAdvertisingManager1.cs" />
-    <Compile Include="LEAdvertisement1.cs" />
-    <Compile Include="Agent1.cs" />
+    <Compile Include="DemoProfile.cs" />
+    <Compile Include="Bootstrap.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
+    <ProjectReference Include="..\Mono.BlueZ\Mono.BlueZ.csproj">
+      <Project>{204FAAAD-B023-4C0A-875D-BFCBEE8E58B8}</Project>
+      <Name>Mono.BlueZ</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Mono.BlueZ.DBus\Mono.BlueZ.DBus.csproj">
+      <Project>{68E6EB3B-4076-48F6-9EB6-1181057C0977}</Project>
+      <Name>Mono.BlueZ.DBus</Name>
+    </ProjectReference>
     <ProjectReference Include="..\dbus-sharp\src\dbus-sharp.csproj">
       <Project>{09A0200F-F3AF-4BD6-9EC4-E7D80D273E4C}</Project>
       <Name>dbus-sharp</Name>
