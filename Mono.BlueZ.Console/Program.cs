@@ -7,11 +7,15 @@ namespace Mono.BlueZ.Console
 	{
 		public static void Main (string[] args)
 		{
+			AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler (GlobalHandler);
 			var bootstrap = new Bootstrap ();
-			System.Console.WriteLine ("dbus up, bootstrap run");
-			bootstrap.Run ();
-			System.Console.WriteLine ("bootstrap done");
-			System.Console.ReadLine ();
+			bootstrap.Run (true,null);
+		}
+
+		static void GlobalHandler(object sender, UnhandledExceptionEventArgs args) 
+		{
+			Exception e = (Exception) args.ExceptionObject;
+			System.Console.WriteLine(e.Message);
 		}
 	}
 }

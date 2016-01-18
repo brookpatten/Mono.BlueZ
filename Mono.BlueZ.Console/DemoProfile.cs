@@ -3,30 +3,44 @@ using System.Collections.Generic;
 using DBus;
 using Mono.BlueZ.DBus;
 using org.freedesktop.DBus;
+using System.IO;
 
 namespace Mono.BlueZ.Console
 {
-	[Interface("org.bluez.Profile1")]
-	public class Profile1//:Profile1
+	public class DemoProfile:Profile1
 	{
+		private Stream _fileDescriptor;
 
-		private string _fileDescriptor;
+		public Action<ObjectPath,Stream,IDictionary<string,object>> NewConnectionAction{get;set;}
+		public Action<ObjectPath,Stream> RequestDisconnectionAction{ get; set; }
+		public Action<Stream> ReleaseAction{ get; set; }
 
-		public Profile1 ()
+		public DemoProfile ()
 		{
-
 		}
 
 		public void Release ()
 		{
+			if (ReleaseAction != null) {
+				ReleaseAction (_fileDescriptor);
+			}
 		}
-		public void NewConnection (ObjectPath device, string fileDescriptor, IDictionary<string,object> properties)
+		public void NewConnection (ObjectPath device, Stream fileDescriptor, IDictionary<string,object> properties)
 		{
 			_fileDescriptor = fileDescriptor;
-			System.Console.WriteLine ("Received connection for " + fileDescriptor);
+			if (NewConnectionAction != null) {
+				NewConnectionAction (device, _fileDescriptor, properties);
+			}
 		}
 		public void RequestDisconnection (ObjectPath device)
 		{
+			if (RequestDisconnectionAction != null) {
+				RequestDisconnectionAction (device, _fileDescriptor);
+			} else {
+				if (_fileDescriptor != null) {
+					_fileDescriptor.Close ();
+				}
+			}
 		}
 
 	}

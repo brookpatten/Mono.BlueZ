@@ -6,6 +6,7 @@ using DBus;
 using Mono.BlueZ.DBus;
 using org.freedesktop.DBus;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Mono.BlueZ.Console
 {
@@ -34,124 +35,153 @@ namespace Mono.BlueZ.Console
 			}
 		}
 
-		public void Run()
+		public void Run(bool doDiscovery,string adapterName)
 		{
-			//hack to test some stuff out
 			string Service = "org.bluez";
+			//Important!: there is a flaw in dbus-sharp such that you can only register one interface
+			//at each path, so we have to put these at 2 seperate paths, otherwise I'd probably just put them 
+			//both at root
+			var agentPath = new ObjectPath ("/agent");
+			var profilePath = new ObjectPath ("/profiles");
 
+			string pebbleSerialUUID = "00000000-deca-fade-deca-deafdecacaff";
+			//string serviceUUID = "00001101-deca-fade-deca-deafdecacaff";
+			//string localSerialUUID = "00001101-0000-1000-8000-00805F9B34FB";
+
+			var properties = new Dictionary<string,object> ();
+			//properties ["AutoConnect"] = true;
+			//properties ["Name"] = "Serial Port";
+			//properties ["Service"] = pebbleSerialUUID;
+			//properties ["Role"] = "client";
+			//properties ["PSM"] = (ushort)1;
+			//properties ["RequireAuthentication"] = false;
+			//properties ["RequireAuthorization"] = false;
+			//properties ["Channel"] = (ushort)0;
+
+			//get a proxy for the profile manager so we can register our profile
+			var profileManager = GetObject<ProfileManager1> (Service, new ObjectPath ("/org/bluez"));
+			//create and register our profile
+			var profile = new DemoProfile ();
+			_system.Register (profilePath, profile);
+			profileManager.RegisterProfile (profilePath
+				, pebbleSerialUUID
+				, properties);
+			System.Console.WriteLine ("Registered profile with BlueZ");
+
+			//get a copy of the object manager so we can browse the "tree" of bluetooth items
 			var manager = GetObject<org.freedesktop.DBus.ObjectManager> (Service, ObjectPath.Root);
+			//register these events so we can tell when things are added/removed (eg: discovery)
 			manager.InterfacesAdded += (p, i) => {
-				System.Console.WriteLine (p + " Added");
+				System.Console.WriteLine (p + " Discovered");
 			};
 			manager.InterfacesRemoved += (p, i) => {
-				System.Console.WriteLine (p + " Removed");
+				System.Console.WriteLine (p + " Lost");
 			};
 
-			var managedObjects = manager.GetManagedObjects();
-			var profileManager = GetObject<ProfileManager1> (Service, new ObjectPath ("/org/bluez"));
+			//get the agent manager so we can register our agent
+			var agentManager = GetObject<AgentManager1> (Service, new ObjectPath ("/org/bluez"));
+			var agent = new DemoAgent ();
+			//register our agent and make it the default
+			_system.Register (agentPath, agent);
+			agentManager.RegisterAgent (agentPath, "KeyboardDisplay");
+			agentManager.RequestDefaultAgent (agentPath);
 
-			//this is the value that was used by inthehand.bluetooth
-			string serialUUID = "00001101-0000-1000-8000-00805F9B34FB";
-
-			string adapterName = "hci1";
-			var profile = new Profile1 ();
-			//var appService = "io.mrgibbs";
-			//var appPath = "/io/mrgibbs";
-
-			ObjectPath adapterPath = null;
-
-			foreach (var obj in managedObjects.Keys) {
-				if (managedObjects [obj].ContainsKey (typeof(Adapter1).DBusInterfaceName ())) {
-					if (obj.ToString ().EndsWith (adapterName)) {
-						System.Console.WriteLine ("Adapter found" + obj);
-						adapterPath = obj;
+			try
+			{
+				//get the bluetooth object tree
+				var managedObjects = manager.GetManagedObjects();
+				//find our adapter
+				ObjectPath adapterPath = null;
+				foreach (var obj in managedObjects.Keys) {
+					if (managedObjects [obj].ContainsKey (typeof(Adapter1).DBusInterfaceName ())) {
+						if (string.IsNullOrEmpty(adapterName) || obj.ToString ().EndsWith (adapterName)) {
+							System.Console.WriteLine ("Adapter found at" + obj);
+							adapterPath = obj;
+							break;
+						}
 					}
 				}
-			}
 
-			if (adapterPath == null) {
-				System.Console.WriteLine ("Couldn't find adapter " + adapterName);
-				return;
-			}
+				if (adapterPath == null) {
+					System.Console.WriteLine ("Couldn't find adapter " + adapterName);
+					return;
+				}
 
-			var devices = new List<Device1> ();
+				//get a dbus proxy to the adapter
+				var adapter = GetObject<Adapter1> (Service, adapterPath);
 
-			foreach (var obj in managedObjects.Keys) {
-				if (obj.ToString ().StartsWith (adapterPath.ToString ())) {
-					if (managedObjects [obj].ContainsKey (typeof(Device1).DBusInterfaceName ())) {
+				if(doDiscovery)
+				{
+					//scan for any new devices
+					System.Console.WriteLine("Starting Discovery...");
+					adapter.StartDiscovery ();
+					Thread.Sleep(5000);//totally arbitrary value to make debugging faster
+					//Thread.Sleep ((int)adapter.DiscoverableTimeout * 1000);
+					//refresh the object graph to get any devices that were discovered
+					managedObjects = manager.GetManagedObjects();
+				}
 
-						var managedObject = managedObjects [obj];
-						var name = (string)managedObject[typeof(Device1).DBusInterfaceName()]["Name"];
+				var devices = new List<Device1> ();
+				foreach (var obj in managedObjects.Keys) {
+					if (obj.ToString ().StartsWith (adapterPath.ToString ())) {
+						if (managedObjects [obj].ContainsKey (typeof(Device1).DBusInterfaceName ())) {
 
-						if (name.StartsWith ("Pebble")) {
-							System.Console.WriteLine ("Device " + name + " at " + obj);
-							var device = _system.GetObject<Device1> (Service, obj);
-							devices.Add (device);
+							var managedObject = managedObjects [obj];
+							var name = (string)managedObject[typeof(Device1).DBusInterfaceName()]["Name"];
 
-							if (!device.Paired) {
-								System.Console.WriteLine (name + " not paired, attempting to pair");
-								device.Pair ();
-								System.Console.WriteLine ("Paired");
-							}
-							if (!device.Trusted) {
-								System.Console.WriteLine (name + " not trust, attempting to trust");
-								device.Trusted=true;
-								System.Console.WriteLine ("Trusted");
+							if (name.StartsWith ("Pebble")) {
+								System.Console.WriteLine ("Device " + name + " at " + obj);
+								var device = _system.GetObject<Device1> (Service, obj);
+								devices.Add (device);
+
+								if (!device.Paired) {
+									System.Console.WriteLine (name + " not paired, attempting to pair");
+									device.Pair ();
+									System.Console.WriteLine ("Paired");
+								}
+								if (!device.Trusted) {
+									System.Console.WriteLine (name + " not trust, attempting to trust");
+									device.Trusted=true;
+									System.Console.WriteLine ("Trusted");
+								}
 							}
 						}
 					}
 				}
-			}
 
-			_system.Register (ObjectPath.Root, profile);
+				foreach (var device in devices) {
+					try{
+						System.Console.WriteLine("Attempting Connection to "+device.Name);
+						System.Console.WriteLine("Paired:"+device.Paired.ToString());
+						System.Console.WriteLine("Trusted:"+device.Trusted.ToString());
+						System.Console.WriteLine("UUIDs:");
+						foreach(var uuid in device.UUIDs)
+						{
+							System.Console.WriteLine(uuid);
+						}
 
-			System.Console.WriteLine ("Registered profile on DBus");
+						var bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
+						profile.NewConnectionAction=(path,stream,props)=>{
+							System.Console.WriteLine("Connected");
+							try{
+								stream.Write(bytes,0,bytes.Length);
+							}
+							catch(Exception ex){
+								System.Console.WriteLine("Exception writing to stream "+ex.Message);
+							}
+						};
 
-			//var sessionBus = Bus.Session;
-
-			//if (sessionBus.RequestName (appService) == RequestNameReply.PrimaryOwner) {
-				//create a new instance of the object to be exported
-			//	sessionBus.Register (new ObjectPath(appPath),profile);
-
-			//} else {
-				//import a remote to a local proxy
-			//	profile = sessionBus.GetObject<DemoProfile> (appService,new ObjectPath(appPath));
-			//}
-
-			var properties = new Dictionary<string,object> ();
-			//properties ["AutoConnect"] = true;
-			//properties ["Name"] = "MrGibbs";
-			//properties ["Role"] = "server";
-			//properties ["RequireAuthentication"] = false;
-			//properties ["RequireAuthorization"] = false;
-			//properties ["Channel"] = (ushort)1;
-
-			profileManager.RegisterProfile (ObjectPath.Root
-				, serialUUID
-				, properties);
-			System.Console.WriteLine ("Registered profile with BlueZ");
-
-			foreach (var device in devices) {
-				try{
-					System.Console.WriteLine("Attempting Connection to "+device.Name);
-					System.Console.WriteLine("Trusted:"+device.Trusted.ToString());
-					System.Console.WriteLine("UUIDs:");
-					foreach(var uuid in device.UUIDs)
-					{
-						System.Console.WriteLine(uuid);
+						device.ConnectProfile(pebbleSerialUUID);
 					}
-
-
-
-
-
-					device.ConnectProfile(serialUUID);
-					//device.Connect();
-					System.Console.Write("Connected");
+					catch(Exception ex){
+						System.Console.WriteLine (ex.Message);
+					}
 				}
-				catch(Exception ex){
-					System.Console.WriteLine (ex.Message);
-				}
+			}
+			finally 
+			{
+				agentManager.UnregisterAgent (agentPath);
+				profileManager.UnregisterProfile (profilePath);
 			}
 		}
 
@@ -166,31 +196,16 @@ namespace Mono.BlueZ.Console
 		{
 			try 
 			{
-				// Open our own copy of the System bus, as a consumer
-				// application could have opened it already and we would
-				// then be relying on their threading.
-				/*var tA = typeof(NDesk.DBus.Bus).Assembly.GetType("NDesk.DBus.Address", true);
-				string name = (string)tA.InvokeMember("System",
-					System.Reflection.BindingFlags.Public
-					| System.Reflection.BindingFlags.Static
-					| System.Reflection.BindingFlags.GetProperty,
-					null, null, null,
-					CultureInfo.InvariantCulture);
-				_bus = new Bus(name); */ // Bus.System
-
 				_system=Bus.System;
-				//_session = Bus.Session;
 			} catch (Exception ex) {
 				_startupException = ex;
 				return;
 			} finally {
 				_started.Set();
 			}
-			//Console.WriteLine("Dbus loop running");
-			//
+
 			while (true) {
 				_system.Iterate();
-				//_session.Iterate ();
 			}
 		}
 	}

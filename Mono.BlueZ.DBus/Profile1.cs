@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using DBus;
+using System.Net;
+using System.IO;
 
 namespace Mono.BlueZ.DBus
 {
@@ -9,7 +11,7 @@ namespace Mono.BlueZ.DBus
 	public interface Profile1
 	{
 		void Release ();
-		void NewConnection (ObjectPath device, string fileDescriptor, IDictionary<string,object> properties);
+		void NewConnection (ObjectPath device, Stream fd, IDictionary<string,object> properties);
 		void RequestDisconnection (ObjectPath device);
 	}
 }
