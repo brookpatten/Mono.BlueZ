@@ -1,3 +1,3 @@
 [submodule "dbus-sharp"]
 	path = dbus-sharp
-	url = https://github.com/mono/dbus-sharp.git
+	url = https://github.com/brookpatten/dbus-sharp
