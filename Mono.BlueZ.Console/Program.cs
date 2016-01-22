@@ -9,7 +9,7 @@ namespace Mono.BlueZ.Console
 		{
 			AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler (GlobalHandler);
 			var bootstrap = new Bootstrap ();
-			bootstrap.Run (true,null);
+			bootstrap.Run (true,"hci1");
 		}
 
 		static void GlobalHandler(object sender, UnhandledExceptionEventArgs args) 

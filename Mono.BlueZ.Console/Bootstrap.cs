@@ -31,7 +31,7 @@ namespace Mono.BlueZ.Console
 			}
 			else 
 			{
-				System.Console.WriteLine ("Bus connected at " + _system.UniqueName);
+				//System.Console.WriteLine ("Bus connected at " + _system.UniqueName);
 			}
 		}
 
@@ -43,11 +43,16 @@ namespace Mono.BlueZ.Console
 			//both at root
 			var agentPath = new ObjectPath ("/agent");
 			var profilePath = new ObjectPath ("/profiles");
+			var blueZPath = new ObjectPath ("/org/bluez");
 
+			//still don't really understand this.  The pebble advertises this uuid,
+			//and this is what works, but all my reading tells me that the uuid for the 
+			//serial service should be the 2nd one
 			string pebbleSerialUUID = "00000000-deca-fade-deca-deafdecacaff";
-			//string serviceUUID = "00001101-deca-fade-deca-deafdecacaff";
-			//string localSerialUUID = "00001101-0000-1000-8000-00805F9B34FB";
+			string serialServiceUUID = "00001101-0000-1000-8000-00805F9B34FB";
 
+			//these properties are defined by bluez in /doc/profile-api.txt
+			//but it turns out the defaults work just fine
 			var properties = new Dictionary<string,object> ();
 			//properties ["AutoConnect"] = true;
 			//properties ["Name"] = "Serial Port";
@@ -56,10 +61,10 @@ namespace Mono.BlueZ.Console
 			//properties ["PSM"] = (ushort)1;
 			//properties ["RequireAuthentication"] = false;
 			//properties ["RequireAuthorization"] = false;
-			//properties ["Channel"] = (ushort)0;
+			//properties ["Channel"] = (ushort)1;
 
 			//get a proxy for the profile manager so we can register our profile
-			var profileManager = GetObject<ProfileManager1> (Service, new ObjectPath ("/org/bluez"));
+			var profileManager = GetObject<ProfileManager1> (Service, blueZPath);
 			//create and register our profile
 			var profile = new DemoProfile ();
 			_system.Register (profilePath, profile);
@@ -79,7 +84,7 @@ namespace Mono.BlueZ.Console
 			};
 
 			//get the agent manager so we can register our agent
-			var agentManager = GetObject<AgentManager1> (Service, new ObjectPath ("/org/bluez"));
+			var agentManager = GetObject<AgentManager1> (Service, blueZPath);
 			var agent = new DemoAgent ();
 			//register our agent and make it the default
 			_system.Register (agentPath, agent);
@@ -115,9 +120,12 @@ namespace Mono.BlueZ.Console
 					//scan for any new devices
 					System.Console.WriteLine("Starting Discovery...");
 					adapter.StartDiscovery ();
-					Thread.Sleep(5000);//totally arbitrary value to make debugging faster
+					Thread.Sleep(5000);//totally arbitrary constant, the best kind
 					//Thread.Sleep ((int)adapter.DiscoverableTimeout * 1000);
+
 					//refresh the object graph to get any devices that were discovered
+					//arguably we should do this in the objectmanager added/removed events and skip the full
+					//refresh, but I'm lazy.
 					managedObjects = manager.GetManagedObjects();
 				}
 
@@ -160,23 +168,80 @@ namespace Mono.BlueZ.Console
 							System.Console.WriteLine(uuid);
 						}
 
+						Stream pebbleStream=null;
+
 						var bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
 						profile.NewConnectionAction=(path,stream,props)=>{
-							System.Console.WriteLine("Connected");
-							try{
-								stream.Write(bytes,0,bytes.Length);
+
+							System.Console.WriteLine("Connected to fd "+stream);
+							pebbleStream=stream;
+							System.Console.WriteLine(props.Count+" properties");
+							foreach(var k in props.Keys)
+							{
+								System.Console.WriteLine(k+":"+props[k]);
 							}
-							catch(Exception ex){
-								System.Console.WriteLine("Exception writing to stream "+ex.Message);
-							}
+//
+//							try{
+//								System.Console.WriteLine("Can Read:"+stream.CanRead+", Can Write:"+stream.CanWrite);
+//
+//								var pebbleHello = PebbleHello();
+//
+//								stream.Write(bytes,0,bytes.Length);
+//								stream.Flush();
+//
+//								StreamReader reader = new StreamReader(stream);
+//								while(!reader.EndOfStream)
+//								{
+//									System.Console.WriteLine(reader.ReadLine());
+//								}
+//							}
+//							catch(Exception ex){
+//								System.Console.WriteLine("Exception writing to stream "+ex.Message);
+//								throw;
+//							}
 						};
 
+						System.Console.WriteLine("Connecting...");
+						//device.Connect();
 						device.ConnectProfile(pebbleSerialUUID);
+						//System.Threading.Thread.Sleep(1000);
+						System.Console.WriteLine("ConnectProfile returned");
+
+						var pebbleHello = PebbleHello();
+
+						pebbleStream.Write(pebbleHello,0,pebbleHello.Length);
+						pebbleStream.Flush();
+
+						bool success=false;
+						while(true){
+							try{
+								byte[] buffer = new byte[72];
+
+								int count = pebbleStream.Read(buffer,0,72);
+								string read = System.Text.ASCIIEncoding.ASCII.GetString(buffer);
+								System.Console.WriteLine(read);
+								success=true;
+							//System.Console.WriteLine(reader.ReadLine());
+							}
+							catch(Exception ex)
+							{
+								if(success)
+								{
+									System.Console.WriteLine(ex.Message);
+									success=false;
+								}
+							}
+						}
+						System.Threading.Thread.Sleep(10000);
 					}
 					catch(Exception ex){
+						System.Console.WriteLine("Bootstrap handler");
 						System.Console.WriteLine (ex.Message);
+						System.Console.WriteLine(ex.StackTrace);
 					}
 				}
+
+				managedObjects = manager.GetManagedObjects();
 			}
 			finally 
 			{
@@ -191,7 +256,6 @@ namespace Mono.BlueZ.Console
 			return obj;
 		}
 	
-
 		private void DBusLoop()
 		{
 			try 
@@ -208,7 +272,61 @@ namespace Mono.BlueZ.Console
 				_system.Iterate();
 			}
 		}
+
+		public const byte PEBBLE_CLIENT_VERSION = 2;
+
+		private static byte[] PebbleHello()
+		{
+			byte[] prefix = { PEBBLE_CLIENT_VERSION, 0xFF, 0xFF, 0xFF, 0xFF };
+			byte[] session = GetBytes( (uint)SessionCaps.GAMMA_RAY );
+			byte[] remote = GetBytes( (uint)( RemoteCaps.Telephony | RemoteCaps.SMS | RemoteCaps.Android ) );
+
+			byte[] msg = CombineArrays( prefix, session, remote );
+			return msg;
+		}
+
+		public static byte[] GetBytes( uint value )
+		{
+			byte[] bytes = BitConverter.GetBytes( value );
+			if ( BitConverter.IsLittleEndian )
+				Array.Reverse( bytes );
+			return bytes;
+		}
+
+		public static byte[] CombineArrays( params byte[][] array )
+		{
+			var rv = new byte[array.Select( x => x.Length ).Sum()];
+
+			for ( int i = 0, insertionPoint = 0; i < array.Length; insertionPoint += array[i].Length, i++ )
+				Array.Copy( array[i], 0, rv, insertionPoint, array[i].Length );
+			return rv;
+		}
 	}
 
+	[Flags]
+	public enum RemoteCaps : uint
+	{
+		Unknown = 0,
+		IOS = 1,
+		Android = 2,
+		OSX = 3,
+		Linux = 4,
+		Windows = 5,
+		Telephony = 16,
+		SMS = 32,
+		GPS = 64,
+		BTLE = 128,
+		// 240? No, that doesn't make sense.  But it's apparently true.
+		CameraFront = 240,
+		CameraRear = 256,
+		Accelerometer = 512,
+		Gyro = 1024,
+		Compass = 2048
+	}
+
+	public enum SessionCaps : uint
+	{
+		GAMMA_RAY = 0x80000000
+	}
 }
 

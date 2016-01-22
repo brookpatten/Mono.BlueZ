@@ -11,6 +11,7 @@ namespace Mono.BlueZ.Console
 		}
 		public void Release()
 		{
+			System.Console.WriteLine ("Release");
 		}
 		public string RequestPinCode(ObjectPath device)
 		{
@@ -18,6 +19,7 @@ namespace Mono.BlueZ.Console
 		}
 		public void DisplayPinCode(ObjectPath device,string pinCode)
 		{
+			System.Console.WriteLine ("DisplayPinCode");
 		}
 		public uint RequestPasskey(ObjectPath device)
 		{
@@ -25,15 +27,19 @@ namespace Mono.BlueZ.Console
 		}
 		public void DisplayPasskey (ObjectPath device, uint passkey, ushort entered)
 		{
+			System.Console.WriteLine ("DisplayPasskey");
 		}
 		public void RequestConfirmation(ObjectPath device,uint passkey)
 		{
+			System.Console.WriteLine ("RequestConfirmation");
 		}
 		public void RequestAuthorization(ObjectPath device)
 		{
+			System.Console.WriteLine ("RequestAuthorization");
 		}
 		public void AuthorizeService(ObjectPath device,string uuid)
 		{
+			System.Console.WriteLine ("AuthorizeService");
 		}
 		public void Cancel()
 		{

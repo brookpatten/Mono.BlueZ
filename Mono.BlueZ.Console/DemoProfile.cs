@@ -21,6 +21,7 @@ namespace Mono.BlueZ.Console
 
 		public void Release ()
 		{
+			System.Console.WriteLine ("Release");
 			if (ReleaseAction != null) {
 				ReleaseAction (_fileDescriptor);
 			}
@@ -34,6 +35,7 @@ namespace Mono.BlueZ.Console
 		}
 		public void RequestDisconnection (ObjectPath device)
 		{
+			System.Console.WriteLine ("RequestDisconnection");
 			if (RequestDisconnectionAction != null) {
 				RequestDisconnectionAction (device, _fileDescriptor);
 			} else {
