@@ -31,11 +31,14 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="Program.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="DemoProfile.cs" />
-    <Compile Include="Bootstrap.cs" />
     <Compile Include="DemoAgent.cs" />
+    <Compile Include="PebbleBootstrap.cs" />
+    <Compile Include="BlendMicroBootstrap.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

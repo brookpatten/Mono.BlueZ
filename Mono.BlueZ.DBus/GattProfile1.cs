@@ -9,5 +9,7 @@ namespace Mono.BlueZ.DBus
 	public interface GattProfile1
 	{
 		void Release();
+
+		void NewClientConfiguration(ObjectPath characteristic,string device_address,byte[] value);
 	}
 }

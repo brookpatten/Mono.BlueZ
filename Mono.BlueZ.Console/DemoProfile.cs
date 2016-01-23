@@ -28,6 +28,7 @@ namespace Mono.BlueZ.Console
 		}
 		public void NewConnection (ObjectPath device, FileDescriptor fileDescriptor, IDictionary<string,object> properties)
 		{
+			System.Console.WriteLine ("NewConnection");
 			_fileDescriptor = fileDescriptor;
 			if (NewConnectionAction != null) {
 				NewConnectionAction (device, _fileDescriptor, properties);

@@ -10,14 +10,14 @@ using System.IO;
 
 namespace Mono.BlueZ.Console
 {
-	public class Bootstrap
+	public class PebbleBootstrap
 	{
 		private Bus _system;
 		//private Bus _session;
 		public Exception _startupException{ get; private set; }
 		private ManualResetEvent _started = new ManualResetEvent(false);
 	
-		public Bootstrap()
+		public PebbleBootstrap()
 		{
 			// Run a message loop for DBus on a new thread.
 			var t = new Thread(DBusLoop);
@@ -37,6 +37,7 @@ namespace Mono.BlueZ.Console
 
 		public void Run(bool doDiscovery,string adapterName)
 		{
+			var devices = new List<Pebble> ();
 			string Service = "org.bluez";
 			//Important!: there is a flaw in dbus-sharp such that you can only register one interface
 			//at each path, so we have to put these at 2 seperate paths, otherwise I'd probably just put them 
@@ -49,7 +50,7 @@ namespace Mono.BlueZ.Console
 			//and this is what works, but all my reading tells me that the uuid for the 
 			//serial service should be the 2nd one
 			string pebbleSerialUUID = "00000000-deca-fade-deca-deafdecacaff";
-			string serialServiceUUID = "00001101-0000-1000-8000-00805F9B34FB";
+			//string serialServiceUUID = "00001101-0000-1000-8000-00805F9B34FB";
 
 			//these properties are defined by bluez in /doc/profile-api.txt
 			//but it turns out the defaults work just fine
@@ -129,7 +130,7 @@ namespace Mono.BlueZ.Console
 					managedObjects = manager.GetManagedObjects();
 				}
 
-				var devices = new List<Device1> ();
+
 				foreach (var obj in managedObjects.Keys) {
 					if (obj.ToString ().StartsWith (adapterPath.ToString ())) {
 						if (managedObjects [obj].ContainsKey (typeof(Device1).DBusInterfaceName ())) {
@@ -140,7 +141,7 @@ namespace Mono.BlueZ.Console
 							if (name.StartsWith ("Pebble")) {
 								System.Console.WriteLine ("Device " + name + " at " + obj);
 								var device = _system.GetObject<Device1> (Service, obj);
-								devices.Add (device);
+								devices.Add (new Pebble(){Name=name,Device=device,Path=obj});
 
 								if (!device.Paired) {
 									System.Console.WriteLine (name + " not paired, attempting to pair");
@@ -157,61 +158,41 @@ namespace Mono.BlueZ.Console
 					}
 				}
 
+				profile.NewConnectionAction=(path,fd,props)=>{
+					var pebble = devices.Single(x=>x.Path==path);
+					System.Console.WriteLine("Received FD "+fd+" for "+pebble.Name);
+					fd.SetBlocking();
+					System.Console.WriteLine(props.Count+" properties");
+					foreach(var k in props.Keys)
+					{
+						System.Console.WriteLine(k+":"+props[k]);
+					}
+
+					pebble.FileDescriptor = fd;
+					pebble.Stream = fd.OpenAsStream(true);
+
+					System.Console.WriteLine("Saying Hello...");
+					var pebbleHello = PebbleHello();
+
+					pebble.Stream.Write(pebbleHello,0,pebbleHello.Length);
+					pebble.Stream.Flush();
+				};
+
 				foreach (var device in devices) {
 					try{
 						System.Console.WriteLine("Attempting Connection to "+device.Name);
-						System.Console.WriteLine("Paired:"+device.Paired.ToString());
-						System.Console.WriteLine("Trusted:"+device.Trusted.ToString());
+						System.Console.WriteLine("Paired:"+device.Device.Paired.ToString());
+						System.Console.WriteLine("Trusted:"+device.Device.Trusted.ToString());
 						System.Console.WriteLine("UUIDs:");
-						foreach(var uuid in device.UUIDs)
+						foreach(var uuid in device.Device.UUIDs)
 						{
 							System.Console.WriteLine(uuid);
 						}
 
-						Stream pebbleStream=null;
-
-						profile.NewConnectionAction=(path,fd,props)=>{
-
-							System.Console.WriteLine("Attempting connection to FD "+fd);
-							fd.SetBlocking();
-							pebbleStream=fd.OpenAsStream(true);
-							System.Console.WriteLine(props.Count+" properties");
-							foreach(var k in props.Keys)
-							{
-								System.Console.WriteLine(k+":"+props[k]);
-							}
-						};
-
 						System.Console.WriteLine("Connecting...");
-						device.ConnectProfile(pebbleSerialUUID);
+						device.Device.ConnectProfile(pebbleSerialUUID);
 						System.Console.WriteLine("Connected");
 
-						var pebbleHello = PebbleHello();
-
-						pebbleStream.Write(pebbleHello,0,pebbleHello.Length);
-						pebbleStream.Flush();
-
-						bool success=false;
-						while(true){
-							try{
-								byte[] buffer = new byte[72];
-
-								int count = pebbleStream.Read(buffer,0,72);
-								string read = System.Text.ASCIIEncoding.ASCII.GetString(buffer);
-								System.Console.WriteLine(read);
-								success=true;
-							//System.Console.WriteLine(reader.ReadLine());
-							}
-							catch(Exception ex)
-							{
-								if(success)
-								{
-									System.Console.WriteLine(ex.Message);
-									success=false;
-								}
-							}
-						}
-						System.Threading.Thread.Sleep(10000);
 					}
 					catch(Exception ex){
 						System.Console.WriteLine("Bootstrap handler");
@@ -220,10 +201,32 @@ namespace Mono.BlueZ.Console
 					}
 				}
 
-				managedObjects = manager.GetManagedObjects();
+				while(true){
+					byte[] buffer = new byte[72];
+					foreach(var pebble in devices)
+					{
+						int count = pebble.Stream.Read(buffer,0,72);
+						System.Console.WriteLine("Received data from "+pebble.Name);
+						string read = System.Text.ASCIIEncoding.ASCII.GetString(buffer);
+						System.Console.WriteLine(read);
+					}
+				}
 			}
 			finally 
 			{
+				foreach (var pebble in devices) 
+				{
+					System.Console.WriteLine ("Shutting down " + pebble.Name);
+					try{
+						System.Console.WriteLine("Closing FD");
+					pebble.FileDescriptor.Close ();
+					}catch{}
+					try{
+						System.Console.WriteLine("Disconnecting");
+					pebble.Device.Disconnect ();
+					}catch{}
+				}
+
 				agentManager.UnregisterAgent (agentPath);
 				profileManager.UnregisterProfile (profilePath);
 			}
@@ -280,6 +283,15 @@ namespace Mono.BlueZ.Console
 				Array.Copy( array[i], 0, rv, insertionPoint, array[i].Length );
 			return rv;
 		}
+	}
+
+	public class Pebble
+	{
+		public ObjectPath Path{get;set;}
+		public string Name{get;set;}
+		public Device1 Device{get;set;}
+		public FileDescriptor FileDescriptor{get;set;}
+		public System.IO.Stream Stream{get;set;}
 	}
 
 	[Flags]
