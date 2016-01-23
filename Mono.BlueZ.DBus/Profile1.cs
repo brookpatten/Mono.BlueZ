@@ -11,7 +11,7 @@ namespace Mono.BlueZ.DBus
 	public interface Profile1
 	{
 		void Release ();
-		void NewConnection (ObjectPath device, Stream fd, IDictionary<string,object> properties);
+		void NewConnection (ObjectPath device, FileDescriptor fd, IDictionary<string,object> properties);
 		void RequestDisconnection (ObjectPath device);
 	}
 }

@@ -170,42 +170,21 @@ namespace Mono.BlueZ.Console
 
 						Stream pebbleStream=null;
 
-						var bytes = System.Text.Encoding.ASCII.GetBytes("Hello world!");
-						profile.NewConnectionAction=(path,stream,props)=>{
+						profile.NewConnectionAction=(path,fd,props)=>{
 
-							System.Console.WriteLine("Connected to fd "+stream);
-							pebbleStream=stream;
+							System.Console.WriteLine("Attempting connection to FD "+fd);
+							fd.SetBlocking();
+							pebbleStream=fd.OpenAsStream(true);
 							System.Console.WriteLine(props.Count+" properties");
 							foreach(var k in props.Keys)
 							{
 								System.Console.WriteLine(k+":"+props[k]);
 							}
-//
-//							try{
-//								System.Console.WriteLine("Can Read:"+stream.CanRead+", Can Write:"+stream.CanWrite);
-//
-//								var pebbleHello = PebbleHello();
-//
-//								stream.Write(bytes,0,bytes.Length);
-//								stream.Flush();
-//
-//								StreamReader reader = new StreamReader(stream);
-//								while(!reader.EndOfStream)
-//								{
-//									System.Console.WriteLine(reader.ReadLine());
-//								}
-//							}
-//							catch(Exception ex){
-//								System.Console.WriteLine("Exception writing to stream "+ex.Message);
-//								throw;
-//							}
 						};
 
 						System.Console.WriteLine("Connecting...");
-						//device.Connect();
 						device.ConnectProfile(pebbleSerialUUID);
-						//System.Threading.Thread.Sleep(1000);
-						System.Console.WriteLine("ConnectProfile returned");
+						System.Console.WriteLine("Connected");
 
 						var pebbleHello = PebbleHello();
 

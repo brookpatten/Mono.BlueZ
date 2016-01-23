@@ -9,11 +9,11 @@ namespace Mono.BlueZ.Console
 {
 	public class DemoProfile:Profile1
 	{
-		private Stream _fileDescriptor;
+		private FileDescriptor _fileDescriptor;
 
-		public Action<ObjectPath,Stream,IDictionary<string,object>> NewConnectionAction{get;set;}
-		public Action<ObjectPath,Stream> RequestDisconnectionAction{ get; set; }
-		public Action<Stream> ReleaseAction{ get; set; }
+		public Action<ObjectPath,FileDescriptor,IDictionary<string,object>> NewConnectionAction{get;set;}
+		public Action<ObjectPath,FileDescriptor> RequestDisconnectionAction{ get; set; }
+		public Action<FileDescriptor> ReleaseAction{ get; set; }
 
 		public DemoProfile ()
 		{
@@ -26,7 +26,7 @@ namespace Mono.BlueZ.Console
 				ReleaseAction (_fileDescriptor);
 			}
 		}
-		public void NewConnection (ObjectPath device, Stream fileDescriptor, IDictionary<string,object> properties)
+		public void NewConnection (ObjectPath device, FileDescriptor fileDescriptor, IDictionary<string,object> properties)
 		{
 			_fileDescriptor = fileDescriptor;
 			if (NewConnectionAction != null) {
