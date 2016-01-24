@@ -37,12 +37,14 @@ namespace Mono.BlueZ.Console
 
 		public void Run()
 		{
+
 			string serviceUUID="713d0000-503e-4c75-ba94-3148f18d941e";
 			string charVendorName = "713D0001-503E-4C75-BA94-3148F18D941E";
-			string charRead = "713D0002-503E-4C75-BA94-3148F18D941E";
-			string charWrite = "713D0003-503E-4C75-BA94-3148F18D941E";
+			string charRead = "713D0002-503E-4C75-BA94-3148F18D941E";//rx
+			string charWrite = "713D0003-503E-4C75-BA94-3148F18D941E";//tx
 			string charAck = "713D0004-503E-4C75-BA94-3148F18D941E";
 			string charVersion = "713D0005-503E-4C75-BA94-3148F18D941E";
+			string clientCharacteristic = "00002902-0000-1000-8000-00805f9b34fb";
 
 			System.Console.WriteLine ("Starting Blend Micro Bootstrap");
 			string Service = "org.bluez";
@@ -73,6 +75,8 @@ namespace Mono.BlueZ.Console
 			agentManager.RegisterAgent (agentPath, "KeyboardDisplay");
 			agentManager.RequestDefaultAgent (agentPath);
 
+			var devices = new List<Device1> ();
+
 			try
 			{
 				System.Console.WriteLine("Fetching objects");
@@ -85,6 +89,7 @@ namespace Mono.BlueZ.Console
 					if (managedObjects [obj].ContainsKey (typeof(LEAdvertisingManager1).DBusInterfaceName ())) {
 						System.Console.WriteLine ("Adapter found at" + obj+" that supports LE");
 						adapterPath = obj;
+						break;
 					}
 				}
 
@@ -114,32 +119,71 @@ namespace Mono.BlueZ.Console
 				//refresh the object graph to get any devices that were discovered
 				//arguably we should do this in the objectmanager added/removed events and skip the full
 				//refresh, but I'm lazy.
+				System.Console.WriteLine("Discovery complete, refreshing");
 				managedObjects = manager.GetManagedObjects();
 
-				var devices = new List<Device1> ();
 				foreach (var obj in managedObjects.Keys) {
 					if (obj.ToString ().StartsWith (adapterPath.ToString ())) {
 						if (managedObjects [obj].ContainsKey (typeof(Device1).DBusInterfaceName ())) {
 
 							var managedObject = managedObjects [obj];
-							var name = (string)managedObject[typeof(Device1).DBusInterfaceName()]["Name"];
+							if(managedObject[typeof(Device1).DBusInterfaceName()].ContainsKey("Name"))
+							{
+								var name = (string)managedObject[typeof(Device1).DBusInterfaceName()]["Name"];
 
-							if (name.StartsWith ("MrGibbs")) {
-								System.Console.WriteLine ("Device " + name + " at " + obj);
-								var device = _system.GetObject<Device1> (Service, obj);
-
-								var uuids = device.UUIDs;
-								foreach(var uuid in device.UUIDs)
+								if (name.StartsWith ("MrGibbs")) 
 								{
-									System.Console.WriteLine("\tUUID: "+uuid);
+									System.Console.WriteLine ("Device " + name + " at " + obj);
+									var device = _system.GetObject<Device1> (Service, obj);
+
+									var uuids = device.UUIDs;
+									foreach(var uuid in device.UUIDs)
+									{
+										System.Console.WriteLine("\tUUID: "+uuid);
+									}
+
+									devices.Add(device);
+
 								}
-
-								devices.Add(device);
-
 							}
 						}
 					}
 				}
+
+				var readCharPath = new ObjectPath("/org/bluez/hci0/dev_F6_58_7F_09_5D_E6/service000c/char000f");
+				var  readChar= GetObject<GattCharacteristic1>(Service,readCharPath);
+				var properties = GetObject<Properties>(Service,readCharPath);
+
+				properties.PropertiesChanged += new PropertiesChangedHandler(
+					new Action<string,IDictionary<string,object>,string[]>((@interface,changed,invalidated)=>{
+						System.Console.WriteLine("Properties Changed on "+@interface);
+						if(changed!=null)
+						{
+							foreach(var prop in changed.Keys)
+							{
+								if(changed[prop] is byte[])
+								{
+									foreach(var b in ((byte[])changed[prop]))
+									{
+										System.Console.Write(b+",");
+									}
+									System.Console.WriteLine("");
+								}
+								else
+								{
+									System.Console.WriteLine("{0}={1}",prop,changed[prop]);
+								}
+							}
+						}
+
+						if(invalidated!=null)
+						{
+							foreach(var prop in invalidated)
+							{
+								System.Console.WriteLine(prop+" Invalidated");
+							}
+						}
+					}));
 
 				foreach(var device in devices)
 				{
@@ -148,30 +192,23 @@ namespace Mono.BlueZ.Console
 					System.Console.WriteLine("\tConnected");
 				}
 
-				//var c = GetObject<GattService1>(Service,new ObjectPath("/org/bluez/hci1/dev_F6_58_7F_09_5D_E6/service000c"));
-				var c = GetObject<GattCharacteristic1>(Service,new ObjectPath("/org/bluez/hci1/dev_F6_58_7F_09_5D_E6/service000f/char000d"));
-				//var c = GetObject<GattDescriptor1>(Service,new ObjectPath("/org/bluez/hci1/dev_F6_58_7F_09_5D_E6/service000c/char000f/desc0011"));
-				for(int i=0;i<100;i++)
-				{
-					try
-					{
-						System.Console.WriteLine("Reading data....");
-						//var bytes = c.Value;
-						var bytes = c.ReadValue();
+				readChar.StartNotify();
 
-						foreach(var b in bytes)
-						{
-							System.Console.Write(b+",");
-							System.Console.WriteLine("Received");
-						}
-					}
-					catch{}
-					System.Threading.Thread.Sleep(1000);
-				}
+				System.Threading.Thread.Sleep(10000);
 
+				readChar.StopNotify();
+				System.Threading.Thread.Sleep(500);
 			}
 			finally 
 			{
+				if (devices != null) {
+					foreach(var device in devices)
+					{
+						System.Console.WriteLine("Disconnecting "+device.Name);
+						device.Disconnect();
+						System.Console.WriteLine("\tDisconnected");
+					}
+				}
 				agentManager.UnregisterAgent (agentPath);
 				gattManager.UnregisterProfile (gattProfilePath);
 			}
@@ -208,18 +245,37 @@ namespace Mono.BlueZ.Console
 				Array.Copy( array[i], 0, rv, insertionPoint, array[i].Length );
 			return rv;
 		}
+
+		public void Swallow(Action a)
+		{
+			try
+			{
+				a();
+			}
+			catch{}
+		}
+
+		public void DumpBytes(byte[] bytes)
+		{
+			foreach(var b in bytes)
+			{
+				System.Console.Write(b+",");
+				System.Console.WriteLine("Received");
+			}
+		}
 	}
 
 	public class BlendGattProfile:GattProfile1
 	{
+		public BlendGattProfile()
+		{
+		}
+
 		public void Release()
 		{
 			System.Console.WriteLine ("GattProfile1.Release");
 		}
-		public void NewClientConfiguration(ObjectPath characteristic,string device_address,byte[] value)
-		{
-			System.Console.WriteLine ("NewClientConfiguration");
-		}
+
 	}
 
 }
