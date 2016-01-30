@@ -54,6 +54,7 @@
     <Compile Include="LEAdvertisingManager1.cs" />
     <Compile Include="LEAdvertisement1.cs" />
     <Compile Include="Agent1.cs" />
+    <Compile Include="DBusConnection.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
