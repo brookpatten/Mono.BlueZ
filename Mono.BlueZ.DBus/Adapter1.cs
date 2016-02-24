@@ -4,7 +4,6 @@ using DBus;
 
 namespace Mono.BlueZ.DBus
 {
-	// on /org/bluez/hciX
 	[Interface("org.bluez.Adapter1")]
 	public interface Adapter1
 	{
