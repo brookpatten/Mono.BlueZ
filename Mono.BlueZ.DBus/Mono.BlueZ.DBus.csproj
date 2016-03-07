@@ -55,6 +55,7 @@
     <Compile Include="LEAdvertisement1.cs" />
     <Compile Include="Agent1.cs" />
     <Compile Include="DBusConnection.cs" />
+    <Compile Include="BlueZPath.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

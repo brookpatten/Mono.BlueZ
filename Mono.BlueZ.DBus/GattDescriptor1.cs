@@ -14,6 +14,6 @@ namespace Mono.BlueZ.DBus
 		string UUID{ get; }
 		ObjectPath Characteristic{ get; }
 		byte[] Value{ get; }
-		IList<string> Flags{get;}
+		string[] Flags{get;}
 	}
 }

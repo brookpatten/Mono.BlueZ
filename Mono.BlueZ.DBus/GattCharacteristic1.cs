@@ -17,7 +17,7 @@ namespace Mono.BlueZ.DBus
 		ObjectPath Service{ get; }
 		byte[] Value{ get; }
 		bool Notifying{get;}
-		IList<string> Flags{get;}
-		IList<object> Descriptors{get;}
+		string[] Flags{get;}
+		ObjectPath[] Descriptors{get;}
 	}
 }

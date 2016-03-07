@@ -16,6 +16,7 @@ namespace Mono.BlueZ.DBus
 		void DisconnectProfile(string UUID);
 		void Pair ();
 
+		ObjectPath[] GattServices { get; set; }
 		string[] UUIDs{get;}
 		bool Blocked{get;set;}
 		bool Connected{ get; }

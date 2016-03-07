@@ -11,7 +11,7 @@ namespace Mono.BlueZ.DBus
 		string UUID{ get; }
 		bool Primary{get;}
 		ObjectPath Device{ get; }
-		IList<ObjectPath> Characteristics{get;}
-		IList<ObjectPath> Includes{get;}
+		ObjectPath[] Characteristics{get;}
+		ObjectPath[] Includes{get;}
 	}
 }
