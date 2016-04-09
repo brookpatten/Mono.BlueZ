@@ -66,5 +66,25 @@ namespace Mono.BlueZ.DBus
 		{
 			return new ObjectPath (DeviceString (adapterName, deviceAddress));
 		}
+
+		public static string GattServiceString (string adapter, string deviceAddress, string serviceId)
+		{
+			return string.Format ("{0}/service{1}", DeviceString (adapter, deviceAddress),serviceId);
+		}
+
+		public static ObjectPath GattService (string adapter, string deviceAddress, string serviceId, string charId)
+		{
+			return new ObjectPath (GattServiceString (adapter, deviceAddress, serviceId));
+		}
+
+		public static string GattCharacteristicString (string adapter, string deviceAddress, string serviceId, string charId)
+		{
+			return string.Format ("{0}/char{1}", GattServiceString (adapter, deviceAddress,serviceId),charId);
+		}
+
+		public static ObjectPath GattCharacteristic (string adapter, string deviceAddress, string serviceId, string charId)
+		{
+			return new ObjectPath (GattCharacteristicString (adapter, deviceAddress, serviceId, charId));
+		}
 	}
 }
