@@ -55,7 +55,7 @@ namespace Mono.BlueZ.DBus
 
 		private void DBusLoop()
 		{
-			try 
+			try
 			{
 				_system=Bus.System;
 			} 
