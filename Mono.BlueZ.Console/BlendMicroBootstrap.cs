@@ -103,7 +103,7 @@ namespace Mono.BlueZ.Console
 				gattManager = GetObject<GattManager1>(Service,adapterPath);
 				var gattProfile = new BlendGattProfile();
 				_system.Register(gattProfilePath,gattProfile); 
-				gattManager.RegisterProfile(gattProfilePath,new string[]{charRead},new Dictionary<string,object>());
+                gattManager.RegisterApplication(gattProfilePath, new Dictionary<string,object>());
 				System.Console.WriteLine("Registered gatt profile");
 
 				//assume discovery for ble
@@ -210,7 +210,7 @@ namespace Mono.BlueZ.Console
 					}
 				}
 				agentManager.UnregisterAgent (agentPath);
-				gattManager.UnregisterProfile (gattProfilePath);
+                gattManager.UnregisterApplication (gattProfilePath);
 			}
 		}
 
@@ -271,7 +271,9 @@ namespace Mono.BlueZ.Console
 		{
 		}
 
-		public void Release()
+        public IList<string> UUIDs => throw new NotImplementedException();
+
+        public void Release()
 		{
 			System.Console.WriteLine ("GattProfile1.Release");
 		}

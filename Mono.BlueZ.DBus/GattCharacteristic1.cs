@@ -8,16 +8,14 @@ namespace Mono.BlueZ.DBus
 	[Interface("org.bluez.GattCharacteristic1")]
 	public interface GattCharacteristic1
 	{
-		byte[] ReadValue ();
-		void WriteValue(byte[] value);
-		void StartNotify();
-		void StopNotify ();
+        byte[] ReadValue(IDictionary<string, object> options);
+        void WriteValue(byte[] value, IDictionary<string, object> options);
+        void StartNotify();
+        void StopNotify();
+        void Confirm();
 
-		string UUID{ get; }
-		ObjectPath Service{ get; }
-		byte[] Value{ get; }
-		bool Notifying{get;}
-		string[] Flags{get;}
-		ObjectPath[] Descriptors{get;}
+        string UUID { get; }
+        ObjectPath Service { get; }
+        string[] Flags { get; }
 	}
 }

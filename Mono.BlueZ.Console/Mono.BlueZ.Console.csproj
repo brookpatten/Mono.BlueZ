@@ -39,6 +39,10 @@
     <Compile Include="DemoAgent.cs" />
     <Compile Include="PebbleBootstrap.cs" />
     <Compile Include="BlendMicroBootstrap.cs" />
+    <Compile Include="GattServer.cs" />
+    <Compile Include="TestCharacteristic.cs" />
+    <Compile Include="TestDescriptor.cs" />
+    <Compile Include="TestService.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

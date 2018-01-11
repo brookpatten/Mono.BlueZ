@@ -8,12 +8,11 @@ namespace Mono.BlueZ.DBus
 	[Interface("org.bluez.GattDescriptor1")]
 	public interface GattDescriptor1
 	{
-		byte[] ReadValue ();
-		void WriteValue(byte[] value);
+        byte[] ReadValue(IDictionary<string, object> flags);
+        void WriteValue(byte[] value, IDictionary<string, object> flags);
 
-		string UUID{ get; }
-		ObjectPath Characteristic{ get; }
-		byte[] Value{ get; }
-		string[] Flags{get;}
+        string UUID { get; }
+        ObjectPath Characteristic { get; }
+        string[] Flags { get; }
 	}
 }

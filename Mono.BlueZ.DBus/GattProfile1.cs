@@ -11,5 +11,7 @@ namespace Mono.BlueZ.DBus
 	public interface GattProfile1
 	{
 		void Release();
+
+        IList<string> UUIDs { get; }
 	}
 }
