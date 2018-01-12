@@ -9,9 +9,7 @@ namespace Mono.BlueZ.DBus
 	[Interface("org.bluez.GattManager1")]
 	public interface GattManager1
 	{
-		void RegisterProfile(ObjectPath profile, string[] UUIDs,IDictionary<string,object> options);
-		void RegisterService(ObjectPath service,IDictionary<string,object> options);
-		void UnregisterProfile(ObjectPath profile);
-		void UnregisterService(ObjectPath service);
+        void RegisterApplication(ObjectPath application, IDictionary<string, object> options);
+        void UnregisterApplication(ObjectPath application);
 	}
 }

@@ -58,6 +58,10 @@
     <Compile Include="Agent1.cs" />
     <Compile Include="DBusConnection.cs" />
     <Compile Include="BlueZPath.cs" />
+    <Compile Include="Application.cs" />
+    <Compile Include="Characteristic.cs" />
+    <Compile Include="Descriptor.cs" />
+    <Compile Include="Service.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

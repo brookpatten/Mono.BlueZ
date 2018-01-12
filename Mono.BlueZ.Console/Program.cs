@@ -8,11 +8,14 @@ namespace Mono.BlueZ.Console
 		public static void Main (string[] args)
 		{
 			AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler (GlobalHandler);
-			var bootstrap = new BlendMicroBootstrap ();
-			bootstrap.Run ();
+			//var bootstrap = new BlendMicroBootstrap ();
+			//bootstrap.Run ();
 
 			//var bootstrap = new PebbleBootstrap ();
 			//bootstrap.Run (true, null);
+
+            var gattServer = new GattServer();
+            gattServer.Run();
 		}
 
 		static void GlobalHandler(object sender, UnhandledExceptionEventArgs args) 
